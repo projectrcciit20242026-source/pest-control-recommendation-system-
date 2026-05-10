@@ -2,6 +2,37 @@
 
 A mobile application for detecting agricultural pests and recommending pesticides using AI.
 
+## GitHub Setup Instructions
+
+### Connect to repository
+
+- Open project repo -> go to settings -> Collaborators -> Add people -> Your personal github username that is connected to your terminal / VS Code -> Accept invitation from mail.
+
+- Then run on terminal inside project folder - 
+`
+git remote add origin https://github.com/projectrcciit20242026-source/pest-control-recommendation-system-.git
+`
+
+### Pull Request
+```bash
+git pull origin <branch-name>
+```
+
+### Git Push
+```bash
+# Add changes
+git add .
+
+# Commit changes
+git commit -m "your-message"
+
+# Switch to branch you want to push
+git branch -M <branch-name>
+
+# Push
+git push
+```
+
 ## Project Structure
 
 ```
