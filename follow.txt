@@ -1,0 +1,34 @@
+//STRICT RULE : 1.follow my all instructions 
+	        2.i know may things and edge cases are skipped so make sure it must be added by user self 
+		3.and dont make like production ready because its a clg project but follow proper file structure.
+		4.make sure 1st thing create a requirement.txt and other thing setup before starting codeing
+		5.downlode all packages/libs need
+
+
+
+UI flow -
+	  app name - pestopiya
+ 	  colour theme - green and white
+	  
+	  1.page one - when user enter then a login 'PestoPiya' animation comes.
+	  3.select language option(Englis or Bangla based on language whole ui language changes).
+	  2.page two - if user is login then ok for page 3 although redirect in page login page wher user enter there name and email id and a language.
+	  3.page three - 1.this is the vital screen in the center a camera appers
+ 			 2.in the bottol there have to menu the 'uplode page' and another one is 'profile page'
+	  	         3.if user click camera icon in 'uplode page' a camera interface comes and just like Gpay ther have 2 option 'uplode image' and 'click image'
+	  	         4.if user click 'profile page' ---> if user previously have a record then show ther and if not then show 'no previous report' also user change profile email and name 
+          		 
+	  4.in camera page if user click camera icon then it follow flow 3.2. after that it redirect in another page where user see that a proper repot with image in top which click by user.
+
+
+
+backend flow - 
+		1.technolog - Kivy,fastapi,firebase, and other essential library
+		3.user login and based on data it stores in firebase
+		4.when user click camera icon they have two option one is click image - throw which user click image in real time and another one is uplode from gallery
+		5.after step 5 the picture go for analysis if no match found then smartly handel it to showing to user without showing random error (like suggesting to take image properly or   		uplode correct image)
+		6. If step 4 and 5 done then in result page show image in top and in down side give all small descriptions about that insect and also most importently suggest user that which
+		is the best of the best methode(less harmfull pestiside or homly way based on india) for prevent the pest. must remember we have less token so in small description try to 		gave deatils about pest and how to prevent it.
+		7.our model mainly used for predict the image so that it go to llm and gave details 
+		8.and all data sores in firebase based on user credentials throw that user if login and previously have data then it shows in profile
+		9.and make sure all thing are user language specific user slect in beginning and make sure report also follow this language 
