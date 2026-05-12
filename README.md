@@ -131,7 +131,7 @@ python main.py
 ## Technologies Used
 
 - **Backend**: FastAPI, TensorFlow, Firebase Admin SDK
-- **Mobile**: Kivy, KivyMD, Plyer
+- **UI**: React Js
 - **AI**: TensorFlow (EfficientNetB3), Groq LLM
 - **Database**: Firebase Firestore
 
