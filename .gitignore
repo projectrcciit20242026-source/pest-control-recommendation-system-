@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+backend/firebase-credentials.json
+pest_model.h5
+$RECYCLE.BIN/
+System Volume Information/
+*.log
+.GamingRoot
+.disk/
+.wslconfig.txt
