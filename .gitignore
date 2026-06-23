@@ -1,24 +1,12 @@
-# Python
 .venv/
 __pycache__/
 *.pyc
-
-# Node
-node_modules/
-
-# Environment variables
 .env
-
-# Vite build
-dist/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-pest_model.h5
-
 backend/firebase-credentials.json
+pest_model.h5
+$RECYCLE.BIN/
+System Volume Information/
+*.log
+.GamingRoot
+.disk/
+.wslconfig.txt
