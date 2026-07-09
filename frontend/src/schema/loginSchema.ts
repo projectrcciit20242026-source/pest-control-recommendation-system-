@@ -1,28 +1,29 @@
 import { z } from "zod";
+import { TRANSLATIONS, type Language } from "../translations";
 
-export const LoginSchema = z.object({
-  name: z
-    .string()
-    .min(1, "You must enter your full name")
-    .max(50, "Name must be under 50 characters")
-    .regex(/^[a-zA-Z\s\u0980-\u09FF]+$/, "Name can only contain letters"),
+export const createLoginSchema = (language: Language) => {
+  const t = TRANSLATIONS[language];
 
-  phone: z
-    .string()
-    .min(10, "Phone number must be at least 10 digits")
-    .max(11, "Please enter a valid phone number")
-    .regex(/^[0-9+]+$/, "Phone number can only contain digits"),
+  return z.object({
+    name: z
+      .string()
+      .min(1, t.errors.nameRequired)
+      .max(50, t.errors.nameTooLong)
+      .regex(/^[a-zA-Z\s\u0980-\u09FF]+$/, t.errors.invalidName),
 
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(50, "Password must be under 50 characters")
-    // .regex(
-    //   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
-    //   "Password must contain uppercase, lowercase and a number",
-    // ),
-});
+    phone: z
+      .string()
+      .min(10, t.errors.phoneTooShort)
+      .max(11, t.errors.invalidPhone)
+      .regex(/^[0-9০-৯+]+$/, t.errors.invalidPhone),
 
-export type LoginFormValues = z.infer<typeof LoginSchema>;
+    password: z
+      .string()
+      .min(8, t.errors.passwordTooShort)
+      .max(50, t.errors.passwordTooLong),
+  });
+};
+
+export type LoginFormValues = z.infer<ReturnType<typeof createLoginSchema>>;
 
 export type LoginFormErrors = Partial<Record<keyof LoginFormValues, string>>;

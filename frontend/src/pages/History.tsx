@@ -97,6 +97,32 @@ export default function HistoryPage() {
     }
   };
 
+  // Inside HistoryPage component, above return
+  const translatePestName = (rawPestName: string) => {
+    if (!rawPestName) return "—";
+
+    const name = rawPestName.toLowerCase();
+
+    // These keys should match your Translation file property names
+    const keys = [
+      "mole",
+      "aphids",
+      "cica",
+      "beet",
+      "blister",
+      "legume",
+      "corn",
+      "miridae",
+      "whitefly",
+      "lycorma",
+    ];
+
+    const match = keys.find((key) => name.includes(key));
+
+    // If a match is found in translations (t), return it. Otherwise, return raw English.
+    return match ? (t as any)[match] : rawPestName;
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-8 pb-24">
       {/* Header */}
@@ -181,68 +207,68 @@ export default function HistoryPage() {
 
                 <p className="text-4xl font-bold">{history.length}</p>
 
-                <p className="text-sm text-muted-foreground">
+                {/* <p className="text-sm text-muted-foreground">
                   {t.scansCompleted}
-                </p>
+                </p> */}
               </div>
 
               <Shield className="h-10 w-10 text-primary" />
             </CardContent>
           </Card>
 
-          {history
-            .slice()
-            .reverse()
-            .map((item, index) => {
-              const confidence = (item.confidence || 0) * 100;
+          {history.slice().map((item, index) => {
+            const confidence = (item.confidence || 0) * 100;
 
-              return (
-                <Card key={index} className="transition-all hover:shadow-md">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                        <Shield className="h-6 w-6 text-primary" />
-                      </div>
+            return (
+              <Card key={index} className="transition-all hover:shadow-md">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                      <Shield className="h-6 w-6 text-primary" />
+                    </div>
 
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">{item.pest}</h3>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">
+                        {translatePestName(item.pest)}
+                      </h3>
 
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(item.timestamp)}
-                        </p>
-                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(item.timestamp)}
+                      </p>
+                    </div>
+                    {/* 
 
                       <div className="text-right">
                         <p className="text-xl font-bold">{confidence}%</p>
-
                         <p className="text-xs text-muted-foreground">
                           {t.confidence}
                         </p>
                       </div>
+                      */}
+                  </div>
+
+                  <Progress value={confidence} className="mt-4" />
+
+                  {item.pesticides && item.pesticides.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {item.pesticides.slice(0, 3).map((pesticide, i) => (
+                        <Badge key={i} variant="secondary">
+                          {pesticide}
+                        </Badge>
+                      ))}
+
+                      {item.pesticides.length > 3 && (
+                        <Badge variant="outline">
+                          +{item.pesticides.length - 3}{" "}
+                          {lang === "bangla" ? "আরো" : "more"}
+                        </Badge>
+                      )}
                     </div>
-
-                    <Progress value={confidence} className="mt-4" />
-
-                    {item.pesticides && item.pesticides.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {item.pesticides.slice(0, 3).map((pesticide, i) => (
-                          <Badge key={i} variant="secondary">
-                            {pesticide}
-                          </Badge>
-                        ))}
-
-                        {item.pesticides.length > 3 && (
-                          <Badge variant="outline">
-                            +{item.pesticides.length - 3}{" "}
-                            {lang === "bangla" ? "আরো" : "more"}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

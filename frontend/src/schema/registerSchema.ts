@@ -1,34 +1,47 @@
 import { z } from "zod";
+import { TRANSLATIONS, type Language } from "../translations";
 
-export const RegisterBaseSchema = z.object({
-  name: z
-    .string()
-    .min(1, "You must enter your full name")
-    .max(50, "Name must be under 50 characters"),
+export const createRegisterBaseSchema = (language: Language) => {
+  const t = TRANSLATIONS[language];
 
-  phone: z
-    .string()
-    .min(10, "Phone number must be at least 10 digits")
-    .max(11, "Please enter a valid phone number"),
+  return z.object({
+    name: z
+      .string()
+      .min(1, t.errors.nameRequired)
+      .max(50, t.errors.nameTooLong),
 
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters"),
+    phone: z
+      .string()
+      .min(10, t.errors.phoneTooShort)
+      .max(11, t.errors.invalidPhone)
+      .regex(/^[0-9০-৯+]+$/, t.errors.invalidPhoneCharacters),
 
-  confirmPassword: z
-    .string()
-    .min(1, "Please confirm your password"),
-});
+    password: z
+      .string()
+      .min(8, t.errors.passwordTooShort)
+      .max(50, t.errors.passwordTooLong),
 
-export const RegisterSchema = RegisterBaseSchema.refine(
-  (data) => data.password === data.confirmPassword,
-  {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  }
-);
+    confirmPassword: z
+      .string()
+      .min(1, t.errors.confirmPasswordError),
+  });
+};
 
-export type RegisterFormValues = z.infer<typeof RegisterSchema>;
+export const createRegisterSchema = (language: Language) => {
+  const t = TRANSLATIONS[language];
+
+  return createRegisterBaseSchema(language).refine(
+    (data) => data.password === data.confirmPassword,
+    {
+      message: t.errors.passwordsNotMatchedError,
+      path: ["confirmPassword"],
+    }
+  );
+};
+
+export type RegisterFormValues = z.infer<
+  ReturnType<typeof createRegisterSchema>
+>;
 
 export type RegisterFormErrors = Partial<
   Record<keyof RegisterFormValues, string>

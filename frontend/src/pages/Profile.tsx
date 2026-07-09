@@ -1,14 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, LogOut, User, History, Phone } from "lucide-react";
+import {
+  ChevronLeft,
+  LogOut,
+  User,
+  History,
+  Phone,
+  KeyRound,
+} from "lucide-react";
 import { TRANSLATIONS, type Language } from "../translations";
 import api from "../axios/apiConfig";
+import { Card, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Separator } from "../components/ui/separator";
+import ChangePasswordModal from "./components/ChangePasswordModal";
 
 interface UserData {
   id?: string;
   name?: string;
   phone?: string;
-  language?: Language;
+  language: Language;
 }
 
 export default function Profile() {
@@ -16,6 +28,8 @@ export default function Profile() {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] =
+    useState(false);
 
   const lang: Language = userData?.language || "english";
 
@@ -23,9 +37,7 @@ export default function Profile() {
 
   const fetchProfile = async (): Promise<void> => {
     try {
-      const response = await api.get(
-        "/auth/profile",
-      );
+      const response = await api.get("/auth/profile");
 
       if (response.data.success && response.data.user) {
         setUserData(response.data.user);
@@ -36,11 +48,10 @@ export default function Profile() {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchProfile();
   }, []);
-  
 
   const handleLogout = (): void => {
     localStorage.removeItem("accessToken");
@@ -50,87 +61,111 @@ export default function Profile() {
   if (!userData) return null;
 
   const displayName = userData?.name || "Farmer";
+  const initials = displayName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="max-w-lg mx-auto p-4 md:p-8 pb-24">
       {/* Top Bar */}
-      <div className="flex items-center gap-4 mb-8 bg-white p-6 rounded-3xl shadow-sm border border-gray-50">
-        <button
-          onClick={() => navigate("/main")}
-          className="p-2 hover:bg-gray-50 rounded-xl transition-colors"
-        >
-          <ChevronLeft size={28} className="text-gray-600" />
-        </button>
+      <Card className="mb-8 rounded-3xl shadow-sm border-gray-50">
+        <CardContent className="flex items-center gap-4 p-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/main")}
+            className="rounded-xl hover:bg-gray-50"
+          >
+            <ChevronLeft size={28} className="text-gray-600" />
+          </Button>
 
-        <h1 className="text-2xl font-bold text-gray-800">
-          {t.profile || "Profile"}
-        </h1>
-      </div>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {t.profile || "Profile"}
+          </h1>
+        </CardContent>
+      </Card>
 
       {/* Avatar Card */}
-      <div className="bg-white rounded-[2.5rem] shadow-lg border border-gray-50 p-10 flex flex-col items-center text-center mb-6">
-        <div className="w-28 h-28 bg-gradient-to-br from-green-100 to-green-50 rounded-full flex items-center justify-center text-primary mb-5 shadow-inner">
-          <User size={52} />
-        </div>
+      <Card className="rounded-[2.5rem] shadow-lg border-gray-50 mb-6">
+        <CardContent className="p-10 flex flex-col items-center text-center">
+          <Avatar className="w-28 h-28 mb-5 shadow-inner">
+            <AvatarFallback className="bg-gradient-to-br from-green-100 to-green-50 text-primary">
+              <User size={52} />
+            </AvatarFallback>
+          </Avatar>
 
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">{displayName}</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">
+            {displayName}
+          </h2>
 
-        <p className="text-gray-400 text-sm flex items-center gap-1">
-          <Phone size={13} />
-          {userData.phone || "—"}
-        </p>
-      </div>
-
-      {/* Stats Card */}
-      {/* {loading ? (
-        <div className="bg-white rounded-3xl p-8 flex justify-center mb-6 border border-gray-50">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="bg-primary rounded-[2rem] p-8 text-white mb-6 shadow-xl shadow-green-100">
-          <p className="text-white/70 text-sm uppercase tracking-wider mb-1">
-            {t.totalScans || "Total Pest Detections"}
+          <p className="text-gray-400 text-sm flex items-center gap-1">
+            <Phone size={13} />
+            {userData.phone || "—"}
           </p>
+        </CardContent>
+      </Card>
 
-          <p className="text-5xl font-bold">{totalScans}</p>
+      {/* Actions */}
+      <Card className="rounded-2xl shadow-sm border-gray-100 mb-4 overflow-hidden py-0">
+        <CardContent className="p-0">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/history")}
+            className="w-full h-auto justify-start gap-4 p-5 rounded-none hover:bg-green-50/50 cursor-pointer"
+          >
+            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-primary shrink-0">
+              <History size={24} />
+            </div>
 
-          <p className="text-white/60 text-sm mt-2">
-            {t.scansCompleted || "scans completed"}
-          </p>
-        </div>
-      )} */}
+            <div className="text-left flex-1">
+              <p className="font-bold text-gray-800">
+                {t.historyTitle || "Scan History"}
+              </p>
+            </div>
 
-      {/* History Button */}
-      <button
-        onClick={() => navigate("/history")}
-        className="w-full bg-white border border-gray-100 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md hover:border-green-100 transition-all mb-4"
-      >
-        <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-primary">
-          <History size={24} />
-        </div>
+            <ChevronLeft size={20} className="text-gray-300 rotate-180" />
+          </Button>
 
-        <div className="text-left flex-1">
-          <p className="font-bold text-gray-800">
-            {t.historyTitle || "Scan History"}
-          </p>
+          <Separator />
 
-          {/* <p className="text-gray-400 text-sm">
-            {totalScans} detection
-            {totalScans !== 1 ? "s" : ""} recorded
-          </p> */}
-        </div>
+          <Button
+            variant="ghost"
+            onClick={() => setIsChangePasswordDialogOpen(true)}
+            className="w-full h-auto justify-start gap-4 p-5 rounded-none hover:bg-green-50/50 cursor-pointer"
+          >
+            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-primary shrink-0">
+              <KeyRound size={24} />
+            </div>
 
-        <ChevronLeft size={20} className="text-gray-300 rotate-180" />
-      </button>
+            <div className="text-left flex-1">
+              <p className="font-bold text-gray-800">
+                {t.changePassword || "Change Password"}
+              </p>
+            </div>
+
+            <ChevronLeft size={20} className="text-gray-300 rotate-180" />
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Logout */}
-      <button
+      <Button
+        variant="outline"
         onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-3 py-5 text-red-500 font-bold text-lg hover:bg-red-50 rounded-2xl transition-colors mt-4 border border-red-100"
+        className="w-full h-auto flex items-center justify-center gap-3 py-5 text-red-500 font-bold text-lg hover:bg-red-50 hover:text-red-500 rounded-2xl border-red-100 mt-4"
       >
         <LogOut size={24} />
         {t.logout || "Logout"}
-      </button>
+      </Button>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordDialogOpen}
+        onOpenChange={setIsChangePasswordDialogOpen}
+        lang={userData?.language}
+      />
     </div>
   );
 }

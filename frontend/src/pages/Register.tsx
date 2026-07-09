@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Loader2, Sprout } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, Sprout } from "lucide-react";
 import axios from "axios";
 import { TRANSLATIONS } from "../translations";
-import { LoginSchema, type LoginFormErrors } from "../schema/loginSchema";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -14,13 +13,12 @@ import {
   CardTitle,
   CardDescription,
 } from "../components/ui/card";
-import { Checkbox } from "../components/ui/checkbox";
 import { Badge } from "../components/ui/badge";
 import signupImage from "../assets/signup_image.jpg";
 import { toast } from "sonner";
 import {
-  RegisterBaseSchema,
-  RegisterSchema,
+  createRegisterBaseSchema,
+  createRegisterSchema,
   type RegisterFormErrors,
 } from "../schema/registerSchema";
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -34,8 +32,7 @@ interface RegisterFormState {
   confirmPassword: string;
   language: Language;
   loading: boolean;
-  agreedToTerms: boolean;
-  errors: RegisterFormErrors & { terms?: string };
+  errors: RegisterFormErrors;
   touched: Partial<
     Record<"name" | "phone" | "password" | "confirmPassword", boolean>
   >;
@@ -53,16 +50,15 @@ const API_URL: string =
 function validateField(
   field: "name" | "phone" | "password" | "confirmPassword",
   value: string,
-): string | undefined {
-  const result = RegisterBaseSchema.pick({ [field]: true } as any).safeParse({
+  language: Language,
+) {
+  const schema = createRegisterBaseSchema(language);
+
+  const result = schema.pick({ [field]: true } as any).safeParse({
     [field]: value,
   });
 
-  if (!result.success) {
-    return result.error.issues[0]?.message;
-  }
-
-  return undefined;
+  return result.success ? undefined : result.error.issues[0]?.message;
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────
@@ -100,6 +96,11 @@ function FieldError({
 // ─── Component ─────────────────────────────────────────────────────────────
 
 export default function Register(): React.JSX.Element {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordLength, setPasswordLength] = useState(0);
+  const [confirmPasswordLength, setConfirmPasswordLength] = useState(0);
+
   localStorage.removeItem("accessToken");
 
   const navigate = useNavigate();
@@ -111,7 +112,6 @@ export default function Register(): React.JSX.Element {
     confirmPassword: "",
     language: "english",
     loading: false,
-    agreedToTerms: false,
     errors: {},
     touched: {},
   });
@@ -123,7 +123,6 @@ export default function Register(): React.JSX.Element {
     confirmPassword,
     language,
     loading,
-    agreedToTerms,
     errors,
     touched,
   } = formState;
@@ -138,8 +137,12 @@ export default function Register(): React.JSX.Element {
   const handleFieldChange = (
     field: "name" | "phone" | "password" | "confirmPassword",
     value: string,
-  ): void => {
-    const error = validateField(field, value);
+  ) => {
+    field === "password"
+      ? setPasswordLength(value.length)
+      : field === "confirmPassword" && setConfirmPasswordLength(value.length);
+
+    const error = validateField(field, value, language);
 
     const updatedValues = {
       name,
@@ -149,25 +152,32 @@ export default function Register(): React.JSX.Element {
       [field]: value,
     };
 
-    let confirmPasswordError = errors.confirmPassword;
+    const newErrors = {
+      ...errors,
+      [field]: error,
+    };
 
-    if (
-      updatedValues.confirmPassword &&
-      updatedValues.password !== updatedValues.confirmPassword
-    ) {
-      confirmPasswordError = "Passwords do not match";
-    } else {
-      confirmPasswordError = undefined;
+    if (updatedValues.password && updatedValues.confirmPassword) {
+      const result = createRegisterSchema(language).safeParse(updatedValues);
+
+      if (!result.success) {
+        const confirmIssue = result.error.issues.find(
+          (issue) => issue.path[0] === "confirmPassword",
+        );
+
+        newErrors.confirmPassword = confirmIssue?.message;
+      } else {
+        newErrors.confirmPassword = undefined;
+      }
     }
 
     set({
       [field]: value,
-      touched: { ...touched, [field]: true },
-      errors: {
-        ...errors,
-        [field]: error,
-        confirmPassword: confirmPasswordError,
+      touched: {
+        ...touched,
+        [field]: true,
       },
+      errors: newErrors,
     });
   };
 
@@ -179,7 +189,9 @@ export default function Register(): React.JSX.Element {
     e.preventDefault();
 
     // Validate form fields
-    const result = RegisterSchema.safeParse({
+    const schema = createRegisterSchema(language);
+
+    const result = schema.safeParse({
       name,
       phone,
       password,
@@ -192,10 +204,6 @@ export default function Register(): React.JSX.Element {
         const field = issue.path[0] as keyof RegisterFormErrors;
         if (!fieldErrors[field]) fieldErrors[field] = issue.message;
       }
-    }
-
-    if (!agreedToTerms) {
-      fieldErrors.terms = t.termsError;
     }
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -245,9 +253,9 @@ export default function Register(): React.JSX.Element {
   };
 
   return (
-    <div className="flex mx-auto min-h-screen bg-gray-50">
+    <div className="flex flex-col lg:flex-row mx-auto min-h-screen bg-gray-50">
       {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col p-10 bg-gradient-to-br from-green-50 to-emerald-100">
+      <div className="hidden lg:flex lg:w-1/2 flex-col p-6 xl:p-10 bg-gradient-to-br from-green-50 to-emerald-100">
         <div className="flex justify-center items-center gap-3 mb-4">
           <div className="flex items-center justify-center w-14 h-14 bg-green-600 rounded-xl shadow-md">
             <Sprout size={30} className="text-white" />
@@ -259,7 +267,7 @@ export default function Register(): React.JSX.Element {
         </div>
 
         <Card className="flex-1 overflow-hidden shadow-xl border-0 rounded-2xl">
-          <div className="relative h-92 overflow-hidden">
+          <div className="relative h-64 xl:h-92 overflow-hidden">
             <img
               src={signupImage}
               alt="Farm"
@@ -282,11 +290,11 @@ export default function Register(): React.JSX.Element {
       </div>
 
       {/* Right Panel */}
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <div className="w-full max-w-md">
           {/* Mobile brand */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-xl">
+          <div className="flex items-center gap-3 mb-6 sm:mb-8 lg:hidden">
+            <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-xl shrink-0">
               <Sprout size={20} className="text-white" />
             </div>
             <div>
@@ -298,16 +306,16 @@ export default function Register(): React.JSX.Element {
           </div>
 
           <Card className="shadow-xl border border-gray-100 rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-gray-900">
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
                 {t.createAccount}
               </CardTitle>
-              <CardDescription className="text-gray-500">
+              <CardDescription className="text-sm text-gray-500">
                 {t.startMonitoring}
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="pt-4">
+            <CardContent className="pt-4 px-4 sm:px-6">
               {/* Language Toggle */}
               <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
                 {(["english", "bangla"] as Language[]).map((lang) => (
@@ -330,7 +338,11 @@ export default function Register(): React.JSX.Element {
               </div>
 
               {/* Form */}
-              <form onSubmit={handleRegister} className="space-y-5" noValidate>
+              <form
+                onSubmit={handleRegister}
+                className="space-y-4 sm:space-y-5"
+                noValidate
+              >
                 {/* Name Field */}
                 <div className="space-y-1.5">
                   <RequiredLabel htmlFor="name">{t.fullName}</RequiredLabel>
@@ -382,16 +394,41 @@ export default function Register(): React.JSX.Element {
                 {/* Password field */}
                 <div className="space-y-1.5">
                   <RequiredLabel htmlFor="password">{t.password}</RequiredLabel>
-                  <Input
-                    id="password"
-                    type="password"
-                    disabled={loading}
-                    value={password}
-                    onChange={(e) =>
-                      handleFieldChange("password", e.target.value)
-                    }
-                    placeholder={t.placeholderPassword}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      disabled={loading}
+                      value={password}
+                      onChange={(e) =>
+                        handleFieldChange("password", e.target.value)
+                      }
+                      placeholder={t.placeholderPassword}
+                      className={`h-11 rounded-xl border-gray-200 bg-gray-50 focus:bg-white transition-colors pr-11
+                      ${
+                        touched.password && errors.password
+                          ? "border-red-400 focus:border-red-400 bg-red-50"
+                          : touched.password && !errors.password
+                            ? "border-green-400 focus:border-green-400"
+                            : ""
+                      }`}
+                    />
+
+                    {passwordLength > 0 && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute inset-y-0 right-1 my-auto h-8 w-8 p-0 flex items-center justify-center"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
 
                   <FieldError
                     message={touched.password ? errors.password : undefined}
@@ -403,16 +440,41 @@ export default function Register(): React.JSX.Element {
                   <RequiredLabel htmlFor="confirmPassword">
                     {t.confirmPassword}
                   </RequiredLabel>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    disabled={loading}
-                    value={confirmPassword}
-                    onChange={(e) =>
-                      handleFieldChange("confirmPassword", e.target.value)
-                    }
-                    placeholder={t.placeholderConfirmPassword}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      disabled={loading}
+                      value={confirmPassword}
+                      onChange={(e) =>
+                        handleFieldChange("confirmPassword", e.target.value)
+                      }
+                      placeholder={t.placeholderConfirmPassword}
+                      className={`h-11 rounded-xl border-gray-200 bg-gray-50 focus:bg-white transition-colors pr-11
+                      ${
+                        touched.confirmPassword && errors.confirmPassword
+                          ? "border-red-400 focus:border-red-400 bg-red-50"
+                          : touched.confirmPassword && !errors.confirmPassword
+                            ? "border-green-400 focus:border-green-400"
+                            : ""
+                      }`}
+                    />
+
+                    {confirmPasswordLength > 0 && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        className="absolute inset-y-0 right-1 my-auto h-8 w-8 p-0 flex items-center justify-center"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
 
                   <FieldError
                     message={
@@ -421,46 +483,6 @@ export default function Register(): React.JSX.Element {
                         : undefined
                     }
                   />
-                </div>
-
-                {/* Terms & Conditions */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="terms"
-                      checked={agreedToTerms}
-                      disabled={loading}
-                      onCheckedChange={(checked) =>
-                        set({
-                          agreedToTerms: checked === true,
-                          errors: { ...errors, terms: undefined },
-                        })
-                      }
-                      className={`mt-0.5 border-gray-300 ${
-                        errors.terms ? "border-red-400" : ""
-                      }`}
-                    />
-                    <Label
-                      htmlFor="terms"
-                      className="text-sm text-gray-600 cursor-pointer leading-relaxed"
-                    >
-                      {t.termsLabel}{" "}
-                      <button
-                        type="button"
-                        className="text-green-600 font-semibold hover:underline"
-                      >
-                        {t.termsLink}
-                      </button>{" "}
-                      {t.andText}{" "}
-                      <button
-                        type="button"
-                        className="text-green-600 font-semibold hover:underline"
-                      >
-                        {t.privacyLink}
-                      </button>
-                    </Label>
-                  </div>
-                  <FieldError message={errors.terms} />
                 </div>
 
                 {/* Submit */}
@@ -479,7 +501,7 @@ export default function Register(): React.JSX.Element {
                 </Button>
 
                 {/* Sign in link */}
-                <p className="text-center text-gray-500">
+                <p className="text-center text-sm sm:text-base text-gray-500">
                   {t.alreadyHaveAccount}{" "}
                   <Button
                     type="button"

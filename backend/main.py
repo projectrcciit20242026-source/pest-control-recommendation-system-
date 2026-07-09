@@ -119,8 +119,8 @@ class UserLogin(BaseModel):
     language: str
 
 class UpdateProfile(BaseModel):
-    name: Optional[str] = None
-    email: Optional[str] = None
+    oldPassword: str
+    newPassword: str
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -140,6 +140,7 @@ TRANSLATIONS = {
         "recommended_pesticides": "Recommended Pesticides",
         "prevention_method": "Prevention Method",
         "no_previous_reports": "No previous reports found",
+        "wrong_password": "Your entered password doesn't match your actual password",
         "profile_updated": "Profile updated successfully"
     },
     "bangla": {
@@ -154,6 +155,7 @@ TRANSLATIONS = {
         "recommended_pesticides": "প্রস্তাবিত কীটনাশক",
         "prevention_method": "প্রতিরোধ পদ্ধতি",
         "no_previous_reports": "কোনো পূর্ববর্তী রিপোর্ট পাওয়া যায়নি",
+        "wrong_password": "আপনার দেওয়া পাসওয়ার্ডটি আপনার আসল পাসওয়ার্ডের সাথে মিলছে না",
         "profile_updated": "প্রোফাইল সফলভাবে আপডেট হয়েছে"
     }
 }
@@ -222,7 +224,7 @@ async def signup(user: UserSignup, db: Session = Depends(get_db)):
         # Use phone as the primary unique identifier
         user_phone = user.phone
         if not user_phone:
-            raise HTTPException(status_code=400, detail="Password is required")
+            raise HTTPException(status_code=400, detail="Phone number is required")
 
         existing_user = db.query(User).filter(User.phone == user_phone).first()
         if existing_user:
@@ -282,6 +284,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
 
         # Fetch from PostgreSQL
         db_user = db.query(User).filter(
+            User.name == user.name,
             User.phone == user.phone
         ).first()
 
@@ -296,6 +299,10 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
                 "success": False,
                 "message": get_text("user_not_found", user.language)
             }
+        
+        db_user.language = user.language
+        db.commit()
+        db.refresh(db_user)
         
         return {
             "success": True,
@@ -312,23 +319,29 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.put("/auth/profile")
-async def update_profile(user: UpdateProfile, email: str, db: Session = Depends(get_db)):
+@app.patch("/auth/profile")
+async def update_profile(user: UpdateProfile, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Update user profile
     """
     try:
         # Update in PostgreSQL
-        existing_user = db.query(User).filter((User.email == email) | (User.phone == email)).first()
-        if existing_user:
-            if user.name:
-                existing_user.name = user.name
-            if user.email:
-                existing_user.email = user.email
+        if current_user:
+            if not pwd_context.verify(user.oldPassword, current_user.password):
+                return {
+                    "success": False,
+                    "message": get_text("wrong_password", current_user.language)
+                }
+
+            if(user.newPassword):
+                hashed_password = pwd_context.hash(user.newPassword)
+                current_user.password = hashed_password
+
             db.commit()
+
             return {
                 "success": True,
-                "message": get_text("profile_updated", "english")
+                "message": get_text("profile_updated", current_user.language)
             }
         return {
             "success": False,

@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   Info,
   ShieldCheck,
   Zap,
-  Check,
   WifiOff,
   ServerCrash,
   RefreshCcw,
@@ -13,6 +12,7 @@ import {
 import { TRANSLATIONS } from "../translations";
 import type { Language } from "../translations";
 import api from "../axios/apiConfig";
+import { toast } from "sonner";
 
 interface User {
   id?: string;
@@ -46,7 +46,13 @@ export default function Result() {
   const [result, setResult] = useState<ResultData | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
+  // Guard flag to prevent double-submitting during React StrictMode mount checks
+  const hasRun = useRef(false);
+
   useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const initialize = async () => {
       const pendingImage = localStorage.getItem("pendingImage");
 
@@ -61,9 +67,7 @@ export default function Result() {
 
       if (response.data.success) {
         const user = response.data.user;
-
         setUser(user);
-
         await analyzeImage(pendingImage, user);
       }
     };
@@ -109,6 +113,8 @@ export default function Result() {
             ? (response.data.pesticides as string[])
             : [],
         });
+
+        toast.success(t.scanSuccess);
       } else {
         // Low confidence / random image — NOT a network error
         setError({
@@ -117,6 +123,10 @@ export default function Result() {
           message: response.data?.message || "Image not recognized.",
           supportedPests: response.data?.supported_pests || [],
           confidence: response.data?.confidence || 0,
+        });
+
+        toast.error(t.imageNotRecognized, {
+          description: t.imageNotRecognizedDesc,
         });
       }
     } catch (err: unknown) {
@@ -158,6 +168,34 @@ export default function Result() {
     }
   };
 
+  // Inside Result.tsx, above return
+  const getPestName = () => {
+    if (!result?.pest) return "";
+
+    const name = result.pest.toLowerCase();
+
+    // Array of your known keys from Translations.ts
+    const keys = [
+      "mole",
+      "aphids",
+      "cica",
+      "beet",
+      "blister",
+      "legume",
+      "corn",
+      "miridae",
+      "whitefly",
+      "lycorma",
+    ];
+
+    // Find which key is contained in the API result
+    const match = keys.find((key) => name.includes(key));
+
+    // If match found, return the translated name from 't'.
+    // Otherwise, return the raw name from the API.
+    return match ? (t as any)[match] : result.pest;
+  };
+
   const lang: Language = user?.language || user?.language || "english";
   const t = user ? TRANSLATIONS[lang] : TRANSLATIONS["english"];
 
@@ -169,7 +207,7 @@ export default function Result() {
         <h2 className="text-2xl font-bold text-gray-800 animate-pulse">
           {t.detectInstantly?.split(" ")[0] || "Analyzing"}...
         </h2>
-        <p className="text-gray-500 mt-2">Applying AI models to your crop</p>
+        {/* <p className="text-gray-500 mt-2">Applying AI models to your crop</p> */}
       </div>
     );
   }
@@ -178,6 +216,10 @@ export default function Result() {
   if (error) {
     // Special card for random/non-pest images
     if (error.type === "not_pest") {
+      const suggestionText =
+        lang === "bangla"
+          ? "আমরা কোনো পোকা সনাক্ত করতে পারিনি। মূল সমস্যাটি ছবির মানের: ছবিটি হয়তো পরিষ্কার নয় অথবা এটি কোনো পোকার ছবি নয়। অনুগ্রহ করে আক্রান্ত ফসলের বা পোকার একটি পরিষ্কার, আলোকিত এবং কাছাকাছি ছবি তুলুন।"
+          : "We could not recognize a pest. The problem is the image quality: either the image is not clear or it does not contain a pest. Please take a clear, well-lit, and close-up photo of the affected crop or pest.";
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
           <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-lg w-full border border-gray-100">
@@ -189,54 +231,26 @@ export default function Result() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
                 {error.title}
               </h2>
-              <p className="text-gray-500 text-sm">
-                {lang === "bangla"
-                  ? `আস্থা: ${error.confidence}%`
-                  : `Confidence: ${error.confidence}%`}
+            </div>
+
+            {/* Simplified Suggestion Box */}
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-6 text-center">
+              <p className="text-amber-800 text-sm leading-relaxed font-medium">
+                {suggestionText}
               </p>
             </div>
 
-            {/* Message lines */}
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 mb-6">
-              {error.message.split("\n").map((line, i) => (
-                <p
-                  key={i}
-                  className="text-amber-800 text-sm leading-relaxed mb-1"
-                >
-                  {line}
-                </p>
-              ))}
-            </div>
-
-            {/* Supported pests */}
-            {error.supportedPests.length > 0 && (
-              <div className="mb-6">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-                  {lang === "bangla" ? "সমর্থিত পোকা" : "Supported Pests"}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {error.supportedPests.map((p, i) => (
-                    <span
-                      key={i}
-                      className="text-xs px-3 py-1 bg-green-50 text-primary border border-green-100 rounded-full font-medium capitalize"
-                    >
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            {/* Action Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={() => navigate("/main")}
-                className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-colors"
+                className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-colors cursor-pointer"
               >
                 {lang === "bangla" ? "ফিরে যান" : "Go Back"}
               </button>
               <button
                 onClick={() => navigate("/main")}
-                className="flex-1 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-dark transition-colors shadow-lg shadow-green-100 flex items-center justify-center gap-2"
+                className="flex-1 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-dark transition-colors shadow-lg shadow-green-100 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCcw size={18} />
                 {lang === "bangla" ? "আবার চেষ্টা" : "Try Again"}
@@ -309,17 +323,24 @@ export default function Result() {
         {/* Image Section */}
         <div className="relative group">
           <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-white aspect-square relative bg-gray-100">
-            <img src={imageUri ?? ""} alt="Crop" />
+            <img
+              src={imageUri ?? ""}
+              alt="Crop"
+              className="w-full h-full object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80"></div>
 
             <div className="absolute bottom-10 left-10 right-10">
               <h2 className="text-white text-4xl md:text-5xl font-bold mb-4 leading-tight">
-                {result?.pest}
+                {getPestName()}
+                {/* {result?.pest} */}
               </h2>
-              <div className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-full font-bold shadow-lg">
+              {/*              
+                <div className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-full font-bold shadow-lg">
                 <Check size={20} />
                 {result?.confidence_percentage}% {t.match}
               </div>
+              */}
             </div>
           </div>
         </div>
